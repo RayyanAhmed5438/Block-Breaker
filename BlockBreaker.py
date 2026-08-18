@@ -1,11 +1,34 @@
 import sys
 from   PyQt5.QtWidgets import QApplication,QWidget,QLabel
 from   PyQt5.QtCore    import Qt,QTimer
-from   PyQt5.QtGui     import QFont,QFontDatabase
+from   PyQt5.QtGui     import QBrush, QFont,QFontDatabase, QPainter
 from   PyQt5.QtWidgets import QGraphicsOpacityEffect
 from   PyQt5.QtCore    import QPropertyAnimation
 import pygame
 import random
+
+class Ball(QLabel):
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setFixedSize(30, 30)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+
+    def paintEvent(self, event):
+
+        painter = QPainter(self)
+
+        painter.setRenderHint(QPainter.Antialiasing)
+
+       
+        painter.setBrush(QBrush(Qt.red))
+        painter.setPen(Qt.NoPen)
+
+        
+        painter.drawEllipse(2, 2, self.width() - 4, self.height() - 4)
+
+        painter.end()
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -28,18 +51,19 @@ class MainWindow(QWidget):
         self.plat_heigth = 20
         self.dx          = 15
 
+        self.ball = Ball(self)
 
-        self.ball      = QLabel("📀",self)
-        self.ball_size = 15
-        self.ball_x    = 660
-        self.ball_y    = 820
+        self.ball_size = 30
+        self.ball_x = 660
+        self.ball_y = 820
         self.ball_dx   = 5
         self.ball_dy   = -5
 
-
         self.blocks        = []
-        self.blocks_width  = 20
-        self.blocks_height = 15
+        self.blocks_width  = 43
+        self.blocks_height = 35
+        self.block_rows    = 10
+        self.block_columns = 19
         self.gap_x         = 60
         self.gap_y         = 6
 
@@ -49,7 +73,7 @@ class MainWindow(QWidget):
         self.big_plat  = QLabel("BIGGER PLATFORM!!",self)
         self.big_ball  = QLabel("BIGGER BALL!!"    ,self)
         self.fast_ball = QLabel("FASTER BALL!?"    ,self)
-
+        self.restart_label = QLabel("R TO RESTART", self)
 
         self.fade1 = QPropertyAnimation(QGraphicsOpacityEffect(self.big_plat), b"opacity")
         self.big_plat.setGraphicsEffect(self.fade1.targetObject())
@@ -83,7 +107,6 @@ class MainWindow(QWidget):
         self.plat.setStyleSheet("background-color : green;border : 3px solid black;")
 
 
-        self.ball.setStyleSheet(f"font-family : segoe UI emoji;font-size : {self.ball_size}px;")
         self.ball.move(self.ball_x,self.ball_y)
 
 
@@ -91,6 +114,14 @@ class MainWindow(QWidget):
         self.over.setStyleSheet("color : lime;font-size :200px;background-color : red;border-radius : 20px;")
         self.over.setFont(self.my_font)
         self.over.hide()
+
+        self.restart_label.adjustSize()
+        self.restart_label.setStyleSheet(
+            "color : white;"
+            "font-size : 40px;"
+            "font-weight : bold;"
+        )
+        self.restart_label.hide()
 
 
         self.win.move(550,400)
@@ -112,11 +143,21 @@ class MainWindow(QWidget):
         self.fast_ball.setStyleSheet("color : red;font-size :50px;font-weight : bold;")
         self.fast_ball.hide()
 
+    def center_restart_label(self):
+        self.restart_label.adjustSize()
+
+        x = self.over.x() + (
+            self.over.width() - self.restart_label.width()
+        ) // 2
+
+        y = self.over.y() + self.over.height() + 20
+
+        self.restart_label.move(x, y)
         
     def craete_blocks(self):
-         
-        rows   = 20
-        blocks = 24
+        
+        rows   = self.block_rows
+        blocks = self.block_columns
 
         for row in range(rows):
 
@@ -183,9 +224,13 @@ class MainWindow(QWidget):
 
                 elif power == 2:
                     self.ball_size += 4
-                    self.ball.setStyleSheet(f"font-size : {self.ball_size}px;")
-                    self.ball.adjustSize()
-                    self.show_powerup(self.big_ball,self.fade2)
+
+                    self.ball.setFixedSize(
+                        self.ball_size,
+                        self.ball_size
+                    )
+
+                    self.show_powerup(self.big_ball, self.fade2)
 
                 elif power == 3:
                     self.ball_dx = (abs(self.ball_dx) + 1) * (1 if self.ball_dx > 0 else -1)
@@ -222,6 +267,8 @@ class MainWindow(QWidget):
         if y + l_H >= W_height:
             self.timer.stop()
             self.over .show()     
+            self.center_restart_label()
+            self.restart_label.show()
 
         if self.ball.geometry().intersects(self.plat.geometry()):
             self.ball_dy = -self.ball_dy    
@@ -241,9 +288,7 @@ class MainWindow(QWidget):
 
         self.blocks.clear()
 
-        # -------------------------
-        # RANDOM PLATFORM POSITION
-        # -------------------------
+        
 
         self.plat_width = 250
 
@@ -253,7 +298,7 @@ class MainWindow(QWidget):
 
         self.plat_y = 850
 
-        # Random platform movement direction
+        
         self.dx = random.choice([-15, 15])
 
         self.plat.setGeometry(
@@ -264,70 +309,61 @@ class MainWindow(QWidget):
         )
 
 
-        # -------------------------
-        # RANDOM BALL POSITION
-        # -------------------------
+        
 
-        self.ball_size = 15
+        self.ball_size = 30
+
+        self.ball.setFixedSize(self.ball_size, self.ball_size)
 
         self.ball_x = random.randint(
             int(self.plat_x),
-            int(self.plat_x + self.plat_width - 20)
+            int(self.plat_x + self.plat_width - self.ball_size)
         )
 
-        self.ball_y = self.plat_y - 35
+        self.ball_y = self.plat_y - self.ball_size - 5
 
 
-        # -------------------------
-        # RANDOM BALL DIRECTION
-        # -------------------------
+       
 
-        # Random horizontal direction
+       
         self.ball_dx = random.choice([-5, 5])
 
-        # Ball always initially moves upward
+       
         self.ball_dy = -5
 
-        # Sometimes make the ball start downward
-        # Remove these lines if you always want it to start upward
+       
         if random.choice([True, False]):
             self.ball_dy = 5
 
-
-        self.ball.setStyleSheet(
-            f"font-family : segoe UI emoji;"
-            f"font-size : {self.ball_size}px;"
-        )
-
-        self.ball.adjustSize()
+        
         self.ball.move(
             int(self.ball_x),
             int(self.ball_y)
         )
 
 
-        # Hide game messages
+      
         self.over.hide()
+        self.restart_label.hide()
         self.win.hide()
 
-        # Hide power-up messages
+       
         self.big_plat.hide()
         self.big_ball.hide()
         self.fast_ball.hide()
 
-
-        # Recreate blocks
+      
         self.craete_blocks()
 
-        # Make blocks visible
+       
         for block in self.blocks:
             block.show()
 
 
-        # Put important objects on top
+        
         self.raise_labels()
 
-        # Start game
+       
         self.timer.start(18)
 
     def keyPressEvent(self,event):
