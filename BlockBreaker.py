@@ -1,4 +1,5 @@
 import sys
+import os
 from   PyQt5.QtWidgets import QApplication,QWidget,QLabel
 from   PyQt5.QtCore    import Qt,QTimer
 from   PyQt5.QtGui     import QBrush, QFont,QFontDatabase, QPainter
@@ -35,13 +36,26 @@ class MainWindow(QWidget):
         super().__init__()
         self.setGeometry(0,0,1950,980)
 
-        font_id = QFontDatabase.addApplicationFont("assets/digit.TTF")
-        font_familly = QFontDatabase.applicationFontFamilies(font_id)[0]
-        self.my_font = QFont(font_familly,150)
+        # Use the custom font when available; otherwise fall back to Qt's default font.
+        font_path = os.path.join("assets", "digit.TTF")
+        font_id = QFontDatabase.addApplicationFont(font_path) if os.path.exists(font_path) else -1
+        font_families = QFontDatabase.applicationFontFamilies(font_id) if font_id != -1 else []
+        if font_families:
+            self.my_font = QFont(font_families[0], 150)
+        else:
+            self.my_font = QFont()
+            self.my_font.setPointSize(150)
 
-
-        pygame.mixer.init()
-        self.sound = pygame.mixer.Sound("assets/tap.mp3")
+        # Audio is optional. If the mixer or sound file is unavailable,
+        # the game simply runs without sound.
+        self.sound = None
+        audio_path = os.path.join("assets", "tap.mp3")
+        try:
+            if os.path.exists(audio_path):
+                pygame.mixer.init()
+                self.sound = pygame.mixer.Sound(audio_path)
+        except (pygame.error, OSError):
+            self.sound = None
 
 
         self.plat        = QLabel(self)
@@ -257,7 +271,6 @@ class MainWindow(QWidget):
         l_W      = self.ball.width()
         l_H      = self.ball.height()
 
-
         if x <= 0 or x + l_W >= W_width :
             self.ball_dx = -self.ball_dx
 
@@ -391,7 +404,11 @@ class MainWindow(QWidget):
         self.plat.setGeometry(int(self.plat_x),self.plat_y,self.plat_width,self.plat_heigth)
 
     def play_sound(self):
-        self.sound.play()
+        if self.sound is not None:
+            try:
+                self.sound.play()
+            except pygame.error:
+                pass
 
     def show_powerup(self,label,fade):
         label.show()
@@ -416,4 +433,4 @@ if __name__ == "__main__":
     app    = QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    sys.exit(app.exec_())        
+    sys.exit(app.exec_())
